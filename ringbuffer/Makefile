@@ -1,16 +1,20 @@
 CC=gcc
-CFLAGS=-c -Wall -std=c99
+CFLAGS=-c -Wall -std=c99 -I/usr/local/include
 HEADERS=ringbuffer.h
 OBJECTS=tests.o ringbuffer.o
+LIBS=-lcmockery
+LDFLAGS=-L/usr/local/lib
 EXECUTABLE=tests
+
+
 
 all: $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)
-	$(CC) $(OBJECTS) -o $(EXECUTABLE)
+	$(CC) $(OBJECTS) $(LIBS) -o $(EXECUTABLE) 
 
 %.o: %.c $(HEADERS)
-	$(CC) $(CFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $<
 
 clean:
 	rm -rf *.o $(EXECUTABLE)
