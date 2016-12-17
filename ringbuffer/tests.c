@@ -1,19 +1,24 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
-#include <google/cmockery.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <google/cmockery.h>
 #include "ringbuffer.h"
 
 static ringbuffer *rbuffer;
 
+// Creates a new ringbuffer and sets the state 
+// properly before running a unit test on 
+// the ringbuffer instance.
 void setup_rbuffer(void **state)
 {
 	rbuffer = new_ringbuffer(4);
 	*state = (void*)rbuffer;
 }
 
+// Deletes a ringbuffer after running
+// unit tests on the ringbuffer instance.
 void teardown_rbuffer(void **state)
 {
 	delete_ringbuffer((ringbuffer*)*state);
@@ -59,29 +64,63 @@ void test_rbuffer_insert(void **state)
 
 void test_rbuffer_sfinsert(void **state)
 {
-	ringbuffer_insert(rbuffer, 'C');
+	bool success = ringbuffer_sfinsert(rbuffer, 'C');
+	assert_true(success);
 	assert_true(rbuffer->buffer[0] == 'C');
-
-	ringbuffer_insert(rbuffer, 'o');
-	ringbuffer_insert(rbuffer, 'd');
-	ringbuffer_insert(rbuffer, 'y');
+	
+	ringbuffer_sfinsert(rbuffer, 'o');
+	ringbuffer_sfinsert(rbuffer, 'd');
 	assert_true(rbuffer->buffer[1] == 'o');
 	assert_true(rbuffer->buffer[2] == 'd');
-	// assert_true(rbuffer->buffer[3] == 'y');
 	
-	// ringbuffer_insert(rbuffer, 'B');
-	// assert_true(rbuffer->buffer[0] == 'C');
-	assert_int_equal(rbuffer->head, 0);
-	assert_int_equal(rbuffer->tail, 0);
+	assert_false(ringbuffer_sfinsert(rbuffer, 'y'));
 }
 
-void ringbuffer_print(ringbuffer* rbuf) 
-{	
-	uint32_t i;
-	printf("\n{");
-	for (i = 0; i < rbuf->max; ++i)
-		printf(" %c", rbuf->buffer[i]);
-	printf(" }\n");
+void test_rbuffer_remove(void **state)
+{
+	ringbuffer_sfinsert(rbuffer, 'C');
+	ringbuffer_sfinsert(rbuffer, 'o');
+	ringbuffer_sfinsert(rbuffer, 'd');
+	assert_true(ringbuffer_remove(rbuffer) == 'C');
+	assert_true(rbuffer->tail == 1);
+	assert_true(ringbuffer_remove(rbuffer) == 'o');	
+	assert_true(rbuffer->tail == 2);
+	assert_true(ringbuffer_remove(rbuffer) == 'd');	
+	assert_true(rbuffer->tail == 3);
+	assert_false(ringbuffer_remove(rbuffer));	
+	assert_true(rbuffer->tail == 3);
+}
+
+void test_rbuffer_peek(void **state)
+{
+	ringbuffer_sfinsert(rbuffer, 'C');
+	ringbuffer_sfinsert(rbuffer, 'o');
+	ringbuffer_sfinsert(rbuffer, 'd');
+
+	assert_true(ringbuffer_peek(rbuffer) == 'C');
+	assert_true(rbuffer->tail == 0);
+	assert_true(ringbuffer_peek(rbuffer) == 'C');	
+	assert_true(rbuffer->tail == 0);
+	
+	ringbuffer_remove(rbuffer);
+	assert_true(ringbuffer_peek(rbuffer) == 'o');
+	assert_true(rbuffer->tail == 1);
+}
+
+void test_rbuffer_isfull(void **state)
+{
+	assert_false(ringbuffer_isfull(rbuffer));
+	ringbuffer_sfinsert(rbuffer, 'C');
+	ringbuffer_sfinsert(rbuffer, 'o');
+	ringbuffer_sfinsert(rbuffer, 'd');
+	assert_true(ringbuffer_isfull(rbuffer));
+}
+
+void test_rbuffer_isempty(void **state)
+{
+	assert_true(ringbuffer_isempty(rbuffer));
+	ringbuffer_sfinsert(rbuffer, 'C');
+	assert_false(ringbuffer_isempty(rbuffer));
 }
 
 int main(void)
@@ -89,117 +128,12 @@ int main(void)
 	const UnitTest tests[] = {
 		unit_test(test_new_ringbuffer),
 		unit_test_setup_teardown(test_rbuffer_insert, setup_rbuffer, teardown_rbuffer),
-		unit_test_setup_teardown(test_rbuffer_sfinsert, setup_rbuffer, teardown_rbuffer)
+		unit_test_setup_teardown(test_rbuffer_sfinsert, setup_rbuffer, teardown_rbuffer),
+		unit_test_setup_teardown(test_rbuffer_remove, setup_rbuffer, teardown_rbuffer),
+		unit_test_setup_teardown(test_rbuffer_peek, setup_rbuffer, teardown_rbuffer),
+		unit_test_setup_teardown(test_rbuffer_isfull, setup_rbuffer, teardown_rbuffer),
+		unit_test_setup_teardown(test_rbuffer_isempty, setup_rbuffer, teardown_rbuffer)
 	};
 
 	return run_tests(tests);
-	// ringbuffer* rbuffer = new_ringbuffer(8);
-
-	// if (rbuffer == NULL)
-	// {
-	// 	printf("Could not allocate buffer.\n");
-	// 	return -1;
-	// }	
-
-	// ringbuffer_insert(rbuffer, 'C');
-	// printf("\ninserted %c\n", 'C');
-	// ringbuffer_print(rbuffer);
-	// printf("tail=%d\n", rbuffer->tail);
-	// printf("head=%d\n", rbuffer->head);
-	
-
-	// ringbuffer_insert(rbuffer, 'o');
-	// printf("\ninserted %c\n", 'o');
-	// ringbuffer_print(rbuffer);
-	// printf("tail=%d\n", rbuffer->tail);
-	// printf("head=%d\n", rbuffer->head);
-
-	// ringbuffer_insert(rbuffer, 'd');
-	// printf("\ninserted %c\n", 'd');
-	// ringbuffer_print(rbuffer);
-	// printf("tail=%d\n", rbuffer->tail);
-	// printf("head=%d\n", rbuffer->head);
-
-	// ringbuffer_insert(rbuffer, 'y');
-	// printf("\ninserted %c\n", 'y');
-	// ringbuffer_print(rbuffer);
-	// printf("tail=%d\n", rbuffer->tail);
-	// printf("head=%d\n", rbuffer->head);
-
-	// ringbuffer_insert(rbuffer, '_');
-	// printf("\ninserted %c\n", '_');
-	// ringbuffer_print(rbuffer);
-	// printf("tail=%d\n", rbuffer->tail);
-	// printf("head=%d\n", rbuffer->head);
-	
-	// ringbuffer_insert(rbuffer, 'B');
-	// printf("\ninserted %c\n", 'B');
-	// ringbuffer_print(rbuffer);
-	// printf("tail=%d\n", rbuffer->tail);
-	// printf("head=%d\n", rbuffer->head);
-
-	// printf("\nremoved %c\n", ringbuffer_remove(rbuffer));
-	// ringbuffer_print(rbuffer);
-	// printf("tail=%d\n", rbuffer->tail);
-	// printf("head=%d\n", rbuffer->head);
-
-	// printf("\nremoved %c\n", ringbuffer_remove(rbuffer));
-	// ringbuffer_print(rbuffer);
-	// printf("tail=%d\n", rbuffer->tail);
-	// printf("head=%d\n", rbuffer->head);
-
-	// ringbuffer_insert(rbuffer, 'a');
-	// printf("\ninserted %c\n", 'a');
-	// ringbuffer_print(rbuffer);
-	// printf("tail=%d\n", rbuffer->tail);
-	// printf("head=%d\n", rbuffer->head);
-	
-	// ringbuffer_insert(rbuffer, 'l');
-	// printf("\ninserted %c\n", 'l');
-	// ringbuffer_print(rbuffer);
-	// printf("tail=%d\n", rbuffer->tail);
-	// printf("head=%d\n", rbuffer->head);
-	
-	// printf("\nelement at tail is %c\n", ringbuffer_peek(rbuffer));
-	// ringbuffer_print(rbuffer);
-	// printf("tail=%d\n", rbuffer->tail);
-	// printf("head=%d\n", rbuffer->head);
-
-	// if (ringbuffer_sfinsert(rbuffer, 'o'))
-	// 	printf("\ninserted %c\n", 'o');
-	// else 
-	// 	printf("\ndid not insert... buffer is full\n");
-	// ringbuffer_print(rbuffer);
-	// printf("tail=%d\n", rbuffer->tail);
-	// printf("head=%d\n", rbuffer->head);
-
-	// printf("\nelement at tail is %c\n", ringbuffer_peek(rbuffer));
-	// ringbuffer_print(rbuffer);
-	// printf("tail=%d\n", rbuffer->tail);
-	// printf("head=%d\n", rbuffer->head);
-
-	// if (ringbuffer_sfinsert(rbuffer, 's'))
-	// 	printf("\ninserted %c\n", 's');
-	// else 
-	// 	printf("\ndid not insert... buffer is full\n");
-	// ringbuffer_print(rbuffer);
-	// printf("tail=%d\n", rbuffer->tail);
-	// printf("head=%d\n", rbuffer->head);
-
-	// printf("\nremoved %c\n", ringbuffer_remove(rbuffer));
-	// ringbuffer_print(rbuffer);
-	// printf("tail=%d\n", rbuffer->tail);
-	// printf("head=%d\n", rbuffer->head);
-
-	// if (ringbuffer_sfinsert(rbuffer, 's'))
-	// 	printf("\ninserted %c\n", 's');
-	// else 
-	// 	printf("\ndid not insert... buffer is full\n");
-	// ringbuffer_print(rbuffer);
-	// printf("tail=%d\n", rbuffer->tail);
-	// printf("head=%d\n", rbuffer->head);
-
-	// delete_ringbuffer(rbuffer);
-
-	return 0;
 }
