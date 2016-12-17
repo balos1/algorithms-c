@@ -1,12 +1,10 @@
 CC=gcc
-CFLAGS=-c -Wall -std=c99 -I/usr/local/include
+CFLAGS=-c -Wall -std=c99 -I/usr/local/include -DUNIT_TESTING
 HEADERS=ringbuffer.h
 OBJECTS=tests.o ringbuffer.o
 LIBS=-lcmockery
 LDFLAGS=-L/usr/local/lib
 EXECUTABLE=tests
-
-
 
 all: $(EXECUTABLE)
 
